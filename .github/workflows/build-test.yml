@@ -34,7 +34,7 @@ jobs:
         python setup.py build
 
   documentation:
-    if: github.event.pull_request.merged == true && github.base_ref == 'master'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       pages: write
