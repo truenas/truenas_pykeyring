@@ -1,0 +1,86 @@
+name: Build and Test
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y libkeyutils-dev python3-dev
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install setuptools wheel
+
+    - name: Test build
+      run: |
+        python setup.py build
+
+  documentation:
+    if: github.event.pull_request.merged == true && github.base_ref == 'master'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y libkeyutils-dev python3-dev
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install setuptools wheel sphinx
+
+    - name: Build extension module
+      run: |
+        python setup.py build_ext --inplace
+
+    - name: Generate documentation
+      run: |
+        sphinx-quickstart -q --sep --project="TrueNAS Keyring" --author="TrueNAS" --release="0.1.0" --language="en" --extensions="sphinx.ext.autodoc,sphinx.ext.viewcode" docs
+        echo "import os, sys" >> docs/source/conf.py
+        echo "sys.path.insert(0, os.path.abspath('../../'))" >> docs/source/conf.py
+        echo "sys.path.insert(0, os.path.abspath('../../src'))" >> docs/source/conf.py
+        sphinx-apidoc -o docs/source . --separate
+        cd docs && sphinx-build -b html source build/html || true
+
+    - name: Setup Pages
+      uses: actions/configure-pages@v3
+
+    - name: Upload pages artifact
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: ./docs/build/html
+
+    - name: Deploy to Pages
+      id: deployment
+      uses: actions/deploy-pages@v2
