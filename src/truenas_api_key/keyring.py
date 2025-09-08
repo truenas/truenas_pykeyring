@@ -1,6 +1,7 @@
 import truenas_keyring
 from dataclasses import asdict
 from json import dumps, loads
+from datetime import datetime, timedelta, timezone
 from .constants import KEYRING_NAME, UserApiKey
 
 
@@ -63,12 +64,28 @@ def commit_user_entry(username: str, api_keys: list[UserApiKey]) -> None:
     user_ring.clear()
 
     for entry in api_keys:
-        truenas_keyring.add_key(
+        # Skip revoked entries
+        if entry.expiry == -1:
+            continue
+
+        # Skip expired entries
+        if entry.expiry > 0:
+            now = datetime.now(timezone.utc)
+            expiry_time = datetime.fromtimestamp(entry.expiry, timezone.utc)
+            if expiry_time <= now:
+                continue
+
+        key = truenas_keyring.add_key(
             key_type=truenas_keyring.KeyType.USER,
             description=str(entry.dbid),
             data=dumps(asdict(entry)).encode(),
             target_keyring=user_ring.key.serial
         )
+
+        # Apply timeout if expiry is set (> 0)
+        if entry.expiry > 0:
+            timeout_seconds = int((expiry_time - now).total_seconds())
+            key.set_timeout(timeout=timeout_seconds)
 
 
 def clear_all_api_keys() -> None:

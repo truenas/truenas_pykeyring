@@ -159,6 +159,50 @@ py_tnkey_read_data(py_tnkey_t *self, PyObject *args)
 	return result;
 }
 
+PyDoc_STRVAR(py_tnkey_set_timeout__doc__,
+"set_timeout(timeout) -> None\n"
+"----------------------------\n\n"
+"Set a timeout on the key.\n"
+"See man (3) keyctl_set_timeout for more information.\n\n"
+""
+"Parameters\n"
+"----------\n"
+"timeout : int\n"
+"    Timeout in seconds from now when the key will expire.\n\n"
+""
+"Returns\n"
+"-------\n"
+"None\n\n"
+""
+"Raises\n"
+"------\n"
+"truenas_keyring.KeyringError:\n"
+"    System call failed (see errno for details).\n\n"
+);
+
+static PyObject *
+py_tnkey_set_timeout(py_tnkey_t *self, PyObject *args, PyObject *kwargs)
+{
+	unsigned int timeout;
+	long res;
+	static char *kwlist[] = {"timeout", NULL};
+
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "I", kwlist, &timeout)) {
+		return NULL;
+	}
+
+	Py_BEGIN_ALLOW_THREADS
+	res = keyctl_set_timeout(self->c_serial, timeout);
+	Py_END_ALLOW_THREADS
+
+	if (res == -1) {
+		PyErr_SetFromErrno(get_keyring_error_from_module(self->module_obj));
+		return NULL;
+	}
+
+	Py_RETURN_NONE;
+}
+
 static PyObject *
 py_tnkey_repr(py_tnkey_t *self)
 {
@@ -258,6 +302,12 @@ static PyMethodDef py_tnkey_methods[] = {
 		.ml_meth = (PyCFunction)py_tnkey_read_data,
 		.ml_flags = METH_NOARGS,
 		.ml_doc = py_tnkey_read_data__doc__
+	},
+	{
+		.ml_name = "set_timeout",
+		.ml_meth = (PyCFunction)py_tnkey_set_timeout,
+		.ml_flags = METH_VARARGS | METH_KEYWORDS,
+		.ml_doc = py_tnkey_set_timeout__doc__
 	},
 	{NULL}
 };
