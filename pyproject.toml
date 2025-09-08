@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "truenas_keyring"
+version = "0.1.0"
+description = "TrueNAS keyring module"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "Andrew Walker"},
+]
+license = "LGPL-3.0-or-later"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: C",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Security",
+    "Topic :: System :: Systems Administration"
+]
+
+[tool.setuptools]
+packages = ["truenas_api_key"]
+package-dir = {"truenas_api_key" = "src/truenas_api_key"}
+
+[[tool.setuptools.ext-modules]]
+name = "truenas_keyring"
+sources = [
+    "src/truenas_keyring.c",
+    "src/py_key_utils.c",
+    "src/py_tn_key.c",
+    "src/py_tn_keyring.c",
+    "src/py_tn_key_enum.c"
+]
+include-dirs = ["src"]
+libraries = ["keyutils"]
