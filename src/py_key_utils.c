@@ -69,6 +69,9 @@ bool check_key_type(key_serial_t serial, const char *key_type_str, bool *match_o
  * Passes out pointer to keyring array and number of members of array.
  * Does not require GIL.
  *
+ * On failure, errno will be set to a relevant value that can be used
+ * to generate an appropriate OSError or TNKeyError exception.
+ *
  * NOTE: caller must free keys_out via PyMem_RawFree()
  */
 bool get_keyring_serials(key_serial_t serial, key_serial_t **keys_out, size_t *cnt_out)
