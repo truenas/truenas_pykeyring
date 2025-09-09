@@ -1,7 +1,7 @@
 import truenas_keyring
 from dataclasses import asdict
 from json import dumps, loads
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from .constants import KEYRING_NAME, UserApiKey
 
 
@@ -25,6 +25,7 @@ calling into PAM will be running as UID 0 and therefore
 have a shared persistent keyring.
 """
 
+
 def get_api_keyring():
     persistent_keyring = truenas_keyring.get_persistent_keyring()
     try:
@@ -45,7 +46,9 @@ def get_user_keyring(username: str):
     keyring = get_api_keyring()
 
     try:
-        user_ring = keyring.search(key_type=truenas_keyring.KeyType.KEYRING, description=username)
+        user_ring = keyring.search(
+            key_type=truenas_keyring.KeyType.KEYRING, description=username
+        )
     except FileNotFoundError:
         # most likely explanation is key ring doesn't exist
         user_ring = truenas_keyring.add_keyring(
