@@ -28,6 +28,10 @@ py_tnkey_parse_description(py_tnkey_t *self)
 	 * c.f. man (3) keyctl_describe
 	 */
 	pdesc = strrchr(self->c_desc_buf, TNKEY_SEPARATOR);
+	if (pdesc == NULL) {
+		errno = EINVAL;
+		return false;
+	}
 	self->c_describe = pdesc + 1;
 
 	token = strtok(self->c_desc_buf, TNKEY_SEPARATOR);
