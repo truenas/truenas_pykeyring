@@ -244,7 +244,7 @@ py_tnkey_init(py_tnkey_t *self, PyObject *args, PyObject *kwds)
 		 * Description has form "%s;%d;%d;%08x;%s"
 		 * net items may be added in future kernels before
 		 * the trailing %s (description) and so we use
-		 * strchr to reach it.
+		 * strrchr to reach it.
 		 *
 		 * c.f. man (3) keyctl_describe
 		 */
