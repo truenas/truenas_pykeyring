@@ -25,15 +25,3 @@ classifiers = [
 [tool.setuptools]
 packages = ["truenas_api_key"]
 package-dir = {"truenas_api_key" = "src/truenas_api_key"}
-
-[[tool.setuptools.ext-modules]]
-name = "truenas_keyring"
-sources = [
-    "src/truenas_keyring.c",
-    "src/py_key_utils.c",
-    "src/py_tn_key.c",
-    "src/py_tn_keyring.c",
-    "src/py_tn_key_enum.c"
-]
-include-dirs = ["src"]
-libraries = ["keyutils"]

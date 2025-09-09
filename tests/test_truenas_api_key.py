@@ -1,5 +1,6 @@
 import truenas_api_key.keyring as api_keyring
 from truenas_api_key.constants import UserApiKey, ApiKeyAlgorithm, KEYRING_NAME
+from middlewared.plugins.pwenc import encrypt, decrypt
 import time
 
 
@@ -70,7 +71,7 @@ def test_commit_user_entry():
     admin_keys = [key for key in MOCK_USER_API_KEYS if key.username == username]
 
     # Commit the admin API keys
-    api_keyring.commit_user_entry(username, admin_keys)
+    api_keyring.commit_user_entry(username, admin_keys, encrypt)
 
     # Verify they were stored
     user_keyring = api_keyring.get_user_keyring(username)
@@ -89,7 +90,7 @@ def test_commit_user_entry():
         # Read and verify data structure
         key_data = key.read_data()
         import json
-        api_key_dict = json.loads(key_data.decode())
+        api_key_dict = json.loads(decrypt(key_data.decode()))
 
         assert api_key_dict["username"] == username
         assert api_key_dict["dbid"] == dbid
@@ -111,10 +112,10 @@ def test_dump_user_keyring():
     testuser_keys = [key for key in MOCK_USER_API_KEYS if key.username == username]
 
     # Commit the testuser API key
-    api_keyring.commit_user_entry(username, testuser_keys)
+    api_keyring.commit_user_entry(username, testuser_keys, encrypt)
 
     # Dump the keyring
-    dumped_keys = api_keyring.dump_user_keyring(username)
+    dumped_keys = api_keyring.dump_user_keyring(username, decrypt)
 
     # Should have 1 testuser key
     assert len(dumped_keys) == 1
@@ -139,17 +140,17 @@ def test_clear_user_keyring():
     admin_keys = [key for key in MOCK_USER_API_KEYS if key.username == username]
 
     # First, commit some keys
-    api_keyring.commit_user_entry(username, admin_keys)
+    api_keyring.commit_user_entry(username, admin_keys, encrypt)
 
     # Verify they exist
-    dumped_keys = api_keyring.dump_user_keyring(username)
+    dumped_keys = api_keyring.dump_user_keyring(username, decrypt)
     assert len(dumped_keys) == len(admin_keys)
 
     # Clear the keyring
     api_keyring.clear_user_keyring(username)
 
     # Verify it's empty
-    dumped_keys = api_keyring.dump_user_keyring(username)
+    dumped_keys = api_keyring.dump_user_keyring(username, decrypt)
     assert len(dumped_keys) == 0
 
 
@@ -158,11 +159,11 @@ def test_clear_all_api_keys():
     # First, commit keys for multiple users
     for username in ["admin", "testuser"]:
         user_keys = [key for key in MOCK_USER_API_KEYS if key.username == username]
-        api_keyring.commit_user_entry(username, user_keys)
+        api_keyring.commit_user_entry(username, user_keys, encrypt)
 
     # Verify they exist
-    admin_keys = api_keyring.dump_user_keyring("admin")
-    testuser_keys = api_keyring.dump_user_keyring("testuser")
+    admin_keys = api_keyring.dump_user_keyring("admin", decrypt)
+    testuser_keys = api_keyring.dump_user_keyring("testuser", decrypt)
     assert len(admin_keys) > 0
     assert len(testuser_keys) > 0
 
@@ -183,16 +184,16 @@ def test_commit_entry_overwrites_existing():
     admin_keys = [key for key in MOCK_USER_API_KEYS if key.username == username]
 
     # Commit initial keys
-    api_keyring.commit_user_entry(username, admin_keys)
-    initial_dump = api_keyring.dump_user_keyring(username)
+    api_keyring.commit_user_entry(username, admin_keys, encrypt)
+    initial_dump = api_keyring.dump_user_keyring(username, decrypt)
     assert len(initial_dump) == 2
 
     # Commit with only one key (should replace all)
     single_key = [admin_keys[0]]
-    api_keyring.commit_user_entry(username, single_key)
+    api_keyring.commit_user_entry(username, single_key, encrypt)
 
     # Should now only have one key
-    new_dump = api_keyring.dump_user_keyring(username)
+    new_dump = api_keyring.dump_user_keyring(username, decrypt)
     assert len(new_dump) == 1
     assert new_dump[0]["dbid"] == single_key[0].dbid
 
@@ -202,8 +203,8 @@ def test_dataclass_serialization():
     original_key = MOCK_USER_API_KEYS[0]
 
     # Commit and retrieve
-    api_keyring.commit_user_entry(original_key.username, [original_key])
-    dumped_keys = api_keyring.dump_user_keyring(original_key.username)
+    api_keyring.commit_user_entry(original_key.username, [original_key], encrypt)
+    dumped_keys = api_keyring.dump_user_keyring(original_key.username, decrypt)
 
     recovered_key_dict = dumped_keys[0]
 

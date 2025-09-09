@@ -27,7 +27,7 @@ py_tnkey_parse_description(py_tnkey_t *self)
 	 *
 	 * c.f. man (3) keyctl_describe
 	 */
-	pdesc = strrchr(self->c_desc_buf, TNKEY_SEPARATOR);
+	pdesc = strrchr(self->c_desc_buf, ';');
 	if (pdesc == NULL) {
 		errno = EINVAL;
 		return false;
@@ -248,7 +248,6 @@ py_tnkey_init(py_tnkey_t *self, PyObject *args, PyObject *kwds)
 {
 	key_serial_t serial;
 	PyObject *module_obj;
-	char *pdesc;
 
 	if (!PyArg_ParseTuple(args, "iO", &serial, &module_obj)) {
 		return -1;
