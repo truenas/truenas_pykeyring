@@ -6,8 +6,7 @@ KEYRING_NAME = 'TRUENAS_API_KEYS'
 
 
 class ApiKeyAlgorithm(StrEnum):
-    """ Crypto algorithms supported for auth. SHA256 was used really old API keys, but those
-    aren't supported anymore. At some point we may use stronger algorithms depending on FIPS. """
+    """ Crypto algorithms supported for auth. Currently only SHA512, but maybe more in the future. """
     SHA512 = 'SHA512'
 
 
