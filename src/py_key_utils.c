@@ -184,6 +184,12 @@ create_key_object_from_serial(key_serial_t key_serial, PyObject *module_obj)
 		return NULL;
 	}
 
+	/*
+	 * The following will initialize new TNKey or TNKeyring objects. The paramers are passed
+	 * to the tp_init (init) functions of the objects. We need to store a reference to the
+	 * module oject so that the object's type methods will be able to access data stored in the
+	 * module state.
+	 */
 	if (is_keyring) {
 		py_key_obj = PyObject_CallFunction((PyObject *)&TNKeyringType, "iO", key_serial, module_obj);
 	} else {
