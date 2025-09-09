@@ -126,6 +126,7 @@ PyDoc_STRVAR(py_tnkey_read_data__doc__,
 "------\n"
 "ValueError:\n"
 "    The underlying key type is \"keyring\" and so this function is not supported.\n"
+"    Contents of a keyring should be retrieved via `list_keyring_contents()` method\n"
 "truenas_keyring.KeyringError:\n"
 "    System call failed (see errno for details).\n\n"
 );
