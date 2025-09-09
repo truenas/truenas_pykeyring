@@ -59,9 +59,14 @@ def get_user_keyring(username: str):
     return user_ring
 
 
-def commit_user_entry(username: str, api_keys: list[UserApiKey]) -> None:
+def commit_user_entry(
+    username: str,
+    api_keys: list[UserApiKey],
+    encrypt_fn: callable
+) -> None:
     """ Creates or replaces existing user keyring with new one containing only
-    the API keys specified by `api_keys`"""
+    the API keys specified by `api_keys`. The API keys are encrypted with
+    the specified encrypt_fn prior to insertion. """
     user_ring = get_user_keyring(username)
     # Clear out existing keyring. We'll replace with new entries
     user_ring.clear()
@@ -81,7 +86,7 @@ def commit_user_entry(username: str, api_keys: list[UserApiKey]) -> None:
         key = truenas_keyring.add_key(
             key_type=truenas_keyring.KeyType.USER,
             description=str(entry.dbid),
-            data=dumps(asdict(entry)).encode(),
+            data=encrypt_fn(dumps(asdict(entry))).encode(),
             target_keyring=user_ring.key.serial
         )
 
@@ -103,13 +108,14 @@ def clear_user_keyring(username: str) -> None:
     user_ring.clear()
 
 
-def dump_user_keyring(username: str) -> list:
-    """ dump user API key keyring contents """
+def dump_user_keyring(username: str, decrypt_fn: callable) -> list:
+    """ dump user API key keyring contents. The API keys are
+    decrypted with the specified decrypt_fn after read. """
     user_ring = get_user_keyring(username)
     out = []
 
     for entry in user_ring.list_keyring_contents():
         data = entry.read_data()
-        out.append(loads(data.decode()))
+        out.append(loads(decrypt_fn(data.decode())))
 
     return out
