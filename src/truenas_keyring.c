@@ -263,7 +263,8 @@ PyDoc_STRVAR(tn_add_key__doc__,
 "TypeError:\n"
 "    Invalid parameter type.\n"
 "ValueError:\n"
-"    key_type is \"keyring\" (use add_keyring instead).\n"
+"    You supplied a \"keyring\" key type, use add_keyring instead (and maybe read docs\n"
+"    a little more carefully).\n"
 "truenas_keyring.KeyringError:\n"
 "    System call failed (see errno for details).\n\n"
 );
