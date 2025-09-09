@@ -10,7 +10,7 @@ enum tnkeydescfield {
 	TNKEYDESC_KEY_PERM
 };
 
-static int
+static bool
 py_tnkey_parse_description(py_tnkey_t *self)
 {
 	char *pdesc;
@@ -65,7 +65,13 @@ py_tnkey_parse_description(py_tnkey_t *self)
 		token = strtok(NULL, TNKEY_SEPARATOR);
 	}
 
-	return 0;
+	if (field < TNKEYDESC_KEY_PERM) {
+		// Somehow we have a truncated description
+		errno = EINVAL;
+		return false;
+	}
+
+	return true;
 }
 
 static PyObject *
@@ -252,7 +258,7 @@ py_tnkey_init(py_tnkey_t *self, PyObject *args, PyObject *kwds)
 
 	self->c_desc_buf = get_key_description(serial);
 	if (self->c_desc_buf != NULL) {
-		if (py_tnkey_parse_description(self) != 0) {
+		if (!py_tnkey_parse_description(self)) {
 			PyMem_RawFree(self->c_desc_buf);
 			self->c_desc_buf = NULL;
 			self->c_describe = NULL;
