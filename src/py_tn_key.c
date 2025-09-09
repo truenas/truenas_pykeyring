@@ -13,10 +13,22 @@ enum tnkeydescfield {
 static int
 py_tnkey_parse_description(py_tnkey_t *self)
 {
+	char *pdesc;
 	char *token;
 	char *endptr;
 	int field = 0;
 	unsigned long val;
+
+	/*
+	 * Description has form "%s;%d;%d;%08x;%s"
+	 * net items may be added in future kernels before
+	 * the trailing %s (description) and so we use
+	 * strrchr to reach it.
+	 *
+	 * c.f. man (3) keyctl_describe
+	 */
+	pdesc = strrchr(self->c_desc_buf, TNKEY_SEPARATOR);
+	self->c_describe = pdesc + 1;
 
 	token = strtok(self->c_desc_buf, TNKEY_SEPARATOR);
 	while (token != NULL && field <= TNKEYDESC_KEY_PERM) {
@@ -240,16 +252,6 @@ py_tnkey_init(py_tnkey_t *self, PyObject *args, PyObject *kwds)
 
 	self->c_desc_buf = get_key_description(serial);
 	if (self->c_desc_buf != NULL) {
-		/*
-		 * Description has form "%s;%d;%d;%08x;%s"
-		 * net items may be added in future kernels before
-		 * the trailing %s (description) and so we use
-		 * strrchr to reach it.
-		 *
-		 * c.f. man (3) keyctl_describe
-		 */
-		pdesc = strrchr(self->c_desc_buf, ';');
-		self->c_describe = pdesc + 1;
 		if (py_tnkey_parse_description(self) != 0) {
 			PyMem_RawFree(self->c_desc_buf);
 			self->c_desc_buf = NULL;
