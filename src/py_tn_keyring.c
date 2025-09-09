@@ -19,7 +19,7 @@ py_tn_keyring_init(py_tn_keyring_t *self, PyObject *args, PyObject *kwds)
 	}
 
 	key_type_str = ((py_tnkey_t *)tnkey_instance)->c_key_type_str;
-	if (key_type_str == NULL || strcmp(key_type_str, "keyring") != 0) {
+	if (key_type_str == NULL || strcmp(key_type_str, KEY_TYPE_STR_KEYRING) != 0) {
 		Py_DECREF(tnkey_instance);
 		PyErr_SetString(PyExc_ValueError,
 				"Key type must be 'keyring'");

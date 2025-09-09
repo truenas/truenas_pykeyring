@@ -287,7 +287,7 @@ tn_add_key(PyObject *module_obj, PyObject *args, PyObject *kwargs)
 	}
 
 	/* Prevent creating keyring type with add_key */
-	if (strcmp(key_type_str, "keyring") == 0) {
+	if (strcmp(key_type_str, KEY_TYPE_STR_KEYRING) == 0) {
 		PyErr_SetString(PyExc_ValueError, "Cannot create keyring with add_key, use add_keyring instead");
 		return NULL;
 	}
@@ -347,7 +347,7 @@ tn_add_keyring(PyObject *module_obj, PyObject *args, PyObject *kwargs)
 	}
 
 	Py_BEGIN_ALLOW_THREADS
-	serial = add_key("keyring", description_str, NULL, 0, target_keyring);
+	serial = add_key(KEY_TYPE_STR_KEYRING, description_str, NULL, 0, target_keyring);
 	Py_END_ALLOW_THREADS
 
 	if (serial == -1) {

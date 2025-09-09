@@ -139,7 +139,7 @@ py_tnkey_read_data(py_tnkey_t *self, PyObject *args)
 	bool success;
 
 	/* Check if this is a keyring - if so, raise ValueError */
-	if (self->c_key_type_str != NULL && strcmp(self->c_key_type_str, "keyring") == 0) {
+	if (self->c_key_type_str != NULL && strcmp(self->c_key_type_str, KEY_TYPE_STR_KEYRING) == 0) {
 		PyErr_SetString(PyExc_ValueError, "Cannot read data from keyring key type");
 		return NULL;
 	}

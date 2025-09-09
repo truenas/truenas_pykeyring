@@ -1,5 +1,6 @@
-#include "truenas_keyring.h"
+/* Common utilities for keyring-related operations */
 
+#include "truenas_keyring.h"
 
 
 /*
@@ -65,7 +66,7 @@ bool check_key_type(key_serial_t serial, const char *key_type_str, bool *match_o
 
 /*
  * Retrieve an array of serial numbers of keys within the specified keyring.
- * passes out pointer to keyring array and number of members of array.
+ * Passes out pointer to keyring array and number of members of array.
  * Does not require GIL.
  *
  * NOTE: caller must free keys_out via PyMem_RawFree()
@@ -78,7 +79,7 @@ bool get_keyring_serials(key_serial_t serial, key_serial_t **keys_out, size_t *c
 	bool is_keyring, success;
 
 	/* First check whether the provided serial is actually a keyring */
-	success = check_key_type(serial, "keyring", &is_keyring);
+	success = check_key_type(serial, KEY_TYPE_STR_KEYRING, &is_keyring);
 	if (!success)
 		return false;
 
@@ -131,7 +132,7 @@ bool get_key_data(key_serial_t serial, char **data_out, size_t *data_len)
 	bool is_keyring, success;
 
 	/* First check whether the provided serial is actually a keyring */
-	success = check_key_type(serial, "keyring", &is_keyring);
+	success = check_key_type(serial, KEY_TYPE_STR_KEYRING, &is_keyring);
 	if (!success)
 		return false;
 
@@ -176,7 +177,7 @@ create_key_object_from_serial(key_serial_t key_serial, PyObject *module_obj)
 	PyObject *py_key_obj;
 
 	Py_BEGIN_ALLOW_THREADS
-	success = check_key_type(key_serial, "keyring", &is_keyring);
+	success = check_key_type(key_serial, KEY_TYPE_STR_KEYRING, &is_keyring);
 	Py_END_ALLOW_THREADS
 	if (!success) {
 		PyErr_SetFromErrno(get_keyring_error_from_module(module_obj));

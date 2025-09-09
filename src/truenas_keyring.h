@@ -47,4 +47,9 @@ PyObject *create_key_object_from_serial(key_serial_t key_serial, PyObject *modul
 
 /* Helper function to get KeyringError from module */
 PyObject *get_keyring_error_from_module(PyObject *module_obj);
+
+#define KEY_TYPE_STR_KEYRING "keyring"
+#define KEY_TYPE_STR_USER "user"
+#define KEY_TYPE_STR_LOGON "logon"
+#define KEY_TYPE_STR_BIGKEY "big_key"
 #endif

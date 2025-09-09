@@ -19,11 +19,10 @@ static const intenum_entry_t spec_keyring_tbl[] = {
 };
 
 static const strenum_entry_t keytype_tbl[] = {
-	{"KEYRING", "keyring"},
-	{"USER", "user"},
-	{"LOGON", "logon"},
-	{"BIG_KEY", "big_key"},
-	{"TRUSTED", "trusted"}
+	{"KEYRING", KEY_TYPE_STR_KEYRING},
+	{"USER", KEY_TYPE_STR_USER},
+	{"LOGON", KEY_TYPE_STR_LOGON},
+	{"BIG_KEY", KEY_TYPE_STR_BIGKEY}
 };
 
 static PyObject *
