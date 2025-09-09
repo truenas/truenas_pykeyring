@@ -21,7 +21,7 @@ py_tnkey_parse_description(py_tnkey_t *self)
 
 	/*
 	 * Description has form "%s;%d;%d;%08x;%s"
-	 * net items may be added in future kernels before
+	 * new items may be added in future kernels before
 	 * the trailing %s (description) and so we use
 	 * strrchr to reach it.
 	 *
