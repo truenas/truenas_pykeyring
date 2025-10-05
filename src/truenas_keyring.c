@@ -442,6 +442,10 @@ PyInit_truenas_keyring(void)
 		return NULL;
 	}
 
+	if (PyType_Ready(&TNKeyringIterType) < 0) {
+		return NULL;
+	}
+
 	m = PyModule_Create(&truenas_keyring_module);
 	if (m == NULL) {
 		return NULL;

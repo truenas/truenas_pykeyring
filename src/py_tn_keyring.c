@@ -75,15 +75,50 @@ py_tn_keyring_clear(py_tn_keyring_t *self, PyObject *args)
 	Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(py_tn_keyring_iter_keyring_contents__doc__,
+"iter_keyring_contents(*, unlink_expired=False, unlink_revoked=False)\n"
+"    -> Iterator[truenas_keyring.TNKey | truenas_keyring.TNKeyring]\n"
+"---------------------------------------------------------------------\n\n"
+"Return an iterator over all keys contained within the keyring.\n"
+"See man (3) keyctl_read for more information.\n\n"
+""
+"Parameters\n"
+"----------\n"
+"unlink_expired: bool, optional\n"
+"    If True, automatically unlink expired keys from the keyring.\n"
+"    Default: False.\n\n"
+"unlink_revoked: bool, optional\n"
+"    If True, automatically unlink revoked keys from the keyring.\n"
+"    Default: False.\n\n"
+""
+"Returns\n"
+"-------\n"
+"Iterator[truenas_keyring.TNKey | truenas_keyring.TNKeyring]\n"
+"    An iterator over key objects contained in this keyring.\n"
+"    Each item is either a truenas_keyring.TNKey or truenas_keyring.TNKeyring\n"
+"    depending on the type of the contained key.\n\n"
+""
+"Raises\n"
+"------\n"
+"truenas_keyring.KeyringError:\n"
+"    System call failed (see errno for details).\n\n"
+);
+
 PyDoc_STRVAR(py_tn_keyring_list_keyring_contents__doc__,
-"list_keyring_contents() -> list[truenas_keyring.TNKey | truenas_keyring.TNKeyring]\n"
-"--------------------------------------------------------------------------------------\n\n"
+"list_keyring_contents(*, unlink_expired=False, unlink_revoked=False)\n"
+"    -> list[truenas_keyring.TNKey | truenas_keyring.TNKeyring]\n"
+"---------------------------------------------------------------------\n\n"
 "List all keys contained within the keyring.\n"
 "See man (3) keyctl_read for more information.\n\n"
 ""
 "Parameters\n"
 "----------\n"
-"None\n\n"
+"unlink_expired: bool, optional\n"
+"    If True, automatically unlink expired keys from the keyring.\n"
+"    Default: False.\n\n"
+"unlink_revoked: bool, optional\n"
+"    If True, automatically unlink revoked keys from the keyring.\n"
+"    Default: False.\n\n"
 ""
 "Returns\n"
 "-------\n"
@@ -99,12 +134,58 @@ PyDoc_STRVAR(py_tn_keyring_list_keyring_contents__doc__,
 );
 
 static PyObject *
-py_tn_keyring_list_keyring_contents(py_tn_keyring_t *self, PyObject *Py_UNUSED(ignored))
+py_tn_keyring_iter_keyring_contents(py_tn_keyring_t *self, PyObject *args, PyObject *kwargs)
+{
+	py_tn_keyring_iter_t *iter;
+	bool success;
+	static char *kwlist[] = {"unlink_expired", "unlink_revoked", NULL};
+	bool del_exp = false;
+	bool del_rev = false;
+
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|$pp:iter_keyring_contents",
+					 kwlist, &del_exp, &del_rev)) {
+		return NULL;
+	}
+
+	iter = PyObject_New(py_tn_keyring_iter_t, &TNKeyringIterType);
+	if (iter == NULL) {
+		return NULL;
+	}
+
+	Py_BEGIN_ALLOW_THREADS
+	success = get_keyring_serials(self->py_key->c_serial, &iter->keys, &iter->key_count);
+	Py_END_ALLOW_THREADS
+
+	if (!success) {
+		Py_DECREF(iter);
+		PyErr_SetFromErrno(PyExc_OSError);
+		return NULL;
+	}
+
+	iter->keyring = (py_tn_keyring_t *)Py_NewRef(self);
+	iter->current_index = 0;
+	iter->unlink_expired = del_exp;
+	iter->unlink_revoked = del_rev;
+
+	return (PyObject *)iter;
+}
+
+static PyObject *
+py_tn_keyring_list_keyring_contents(py_tn_keyring_t *self, PyObject *args, PyObject *kwargs)
 {
 	size_t i, key_cnt;
 	key_serial_t *keys;
 	PyObject *py_list, *py_key_obj;
+	long ret;
 	bool success;
+	static char *kwlist[] = {"unlink_expired", "unlink_revoked", NULL};
+	bool del_exp = false;
+	bool del_rev = false;
+
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|$pp:list_keyring_contents",
+					 kwlist, &del_exp, &del_rev)) {
+		return NULL;
+	}
 
 	Py_BEGIN_ALLOW_THREADS
 	success = get_keyring_serials(self->py_key->c_serial, &keys, &key_cnt);
@@ -122,8 +203,45 @@ py_tn_keyring_list_keyring_contents(py_tn_keyring_t *self, PyObject *Py_UNUSED(i
 	}
 
 	for (i = 0; i < key_cnt; i++) {
+		/* Peek at key to see whether it's revoked */
+		Py_BEGIN_ALLOW_THREADS
+		ret = keyctl_read(keys[i], NULL, 0);
+		Py_END_ALLOW_THREADS
+
+		if (ret == -1) {
+			if (errno == ENOKEY) {
+				/* key was unlinked so skip */
+				continue;
+			} else if (((errno == EKEYEXPIRED) && del_exp) ||
+				   ((errno == EKEYREVOKED) && del_rev)){
+				/*
+				 * key was revoked or expired and kwarg specified
+				 * to delete them
+				 */
+				Py_BEGIN_ALLOW_THREADS
+				keyctl_unlink(keys[i], self->py_key->c_serial);
+				Py_END_ALLOW_THREADS
+				continue;
+			} else if ((errno == EKEYEXPIRED) || (errno == EKEYREVOKED)) {
+				/*
+				 * Don't present this key to API user since we can't
+				 * use it for anything
+				 */
+				continue;
+			}
+		}
+
+		errno = 0;
+
 		py_key_obj = create_key_object_from_serial(keys[i], self->py_key->module_obj);
 		if (py_key_obj == NULL) {
+			/* potentially TOCTOU (though very unlikely) */
+			if ((errno == ENOKEY) ||
+			    (errno == EKEYEXPIRED) ||
+			    (errno == EKEYREVOKED)) {
+				PyErr_Clear();
+				continue;
+			}
 			Py_DECREF(py_list);
 			PyMem_RawFree(keys);
 			return NULL;
@@ -220,9 +338,15 @@ static PyMethodDef py_tn_keyring_methods[] = {
 		.ml_doc = py_tn_keyring_clear__doc__
 	},
 	{
+		.ml_name = "iter_keyring_contents",
+		.ml_meth = (PyCFunction)py_tn_keyring_iter_keyring_contents,
+		.ml_flags = METH_VARARGS | METH_KEYWORDS,
+		.ml_doc = py_tn_keyring_iter_keyring_contents__doc__
+	},
+	{
 		.ml_name = "list_keyring_contents",
 		.ml_meth = (PyCFunction)py_tn_keyring_list_keyring_contents,
-		.ml_flags = METH_NOARGS,
+		.ml_flags = METH_VARARGS | METH_KEYWORDS,
 		.ml_doc = py_tn_keyring_list_keyring_contents__doc__
 	},
 	{
