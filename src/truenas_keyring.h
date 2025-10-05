@@ -28,6 +28,16 @@ typedef struct {
 } py_tn_keyring_t;
 
 typedef struct {
+	PyObject_HEAD
+	py_tn_keyring_t *keyring;
+	key_serial_t *keys;
+	size_t key_count;
+	size_t current_index;
+	bool unlink_expired;
+	bool unlink_revoked;
+} py_tn_keyring_iter_t;
+
+typedef struct {
 	PyObject *special_keyring_enum;
 	PyObject *keytype_enum;
 	PyObject *keyring_error;
@@ -35,6 +45,7 @@ typedef struct {
 
 extern PyTypeObject TNKeyType;
 extern PyTypeObject TNKeyringType;
+extern PyTypeObject TNKeyringIterType;
 
 int tn_key_add_enums_to_module(PyObject *module);
 

@@ -7,6 +7,7 @@ truenas_keyring_ext = Extension(
         'src/py_key_utils.c',
         'src/py_tn_key.c',
         'src/py_tn_keyring.c',
+        'src/py_tn_keyring_iter.c',
         'src/py_tn_key_enum.c'
     ],
     include_dirs=['src'],
