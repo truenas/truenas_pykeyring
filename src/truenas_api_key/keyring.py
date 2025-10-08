@@ -2,22 +2,28 @@ import truenas_keyring
 from dataclasses import asdict
 from json import dumps, loads
 from datetime import datetime, timezone
-from .constants import KEYRING_NAME, UserApiKey
+from .constants import PAM_KEYRING_NAME, PAM_API_KEY_NAME, UserApiKey
 
 
 """
 Below is a rough diagram of how these are organized:
 
   Persistent Keyring (for UID 0)
-  └── TRUENAS_API_KEYS
+  └── PAM_TRUENAS
       ├── username_1/
-      │   ├── API Key (dbid: 123)
-      │   ├── API Key (dbid: 124)
-      │   └── ...
+      │   ├── API_KEYS/
+      │   │   ├── API Key (dbid: 123)
+      │   │   ├── API Key (dbid: 124)
+      │   │   └── ...
+      │   ├── SESSIONS/
+      │   └── FAILLOG/
       ├── username_2/
-      │   ├── API Key (dbid: 456)
-      │   ├── API Key (dbid: 457)
-      │   └── ...
+      │   ├── API_KEYS/
+      │   │   ├── API Key (dbid: 456)
+      │   │   ├── API Key (dbid: 457)
+      │   │   └── ...
+      │   ├── SESSIONS/
+      │   └── FAILLOG/
       └── ...
 
 This module assumes that middlewared and the process
@@ -26,37 +32,54 @@ have a shared persistent keyring.
 """
 
 
-def get_api_keyring():
+def get_pam_keyring():
     persistent_keyring = truenas_keyring.get_persistent_keyring()
     try:
-        api_key_keyring = persistent_keyring.search(
+        pam_keyring = persistent_keyring.search(
             key_type=truenas_keyring.KeyType.KEYRING,
-            description=KEYRING_NAME
+            description=PAM_KEYRING_NAME
         )
     except FileNotFoundError:
-        api_key_keyring = truenas_keyring.add_keyring(
-            description=KEYRING_NAME,
+        pam_keyring = truenas_keyring.add_keyring(
+            description=PAM_KEYRING_NAME,
             target_keyring=persistent_keyring.key.serial
         )
 
-    return api_key_keyring
+    return pam_keyring
 
 
 def get_user_keyring(username: str):
-    keyring = get_api_keyring()
+    pam_keyring = get_pam_keyring()
 
     try:
-        user_ring = keyring.search(
+        user_ring = pam_keyring.search(
             key_type=truenas_keyring.KeyType.KEYRING, description=username
         )
     except FileNotFoundError:
         # most likely explanation is key ring doesn't exist
         user_ring = truenas_keyring.add_keyring(
             description=username,
-            target_keyring=keyring.key.serial
+            target_keyring=pam_keyring.key.serial
         )
 
     return user_ring
+
+
+def get_api_keys_keyring(username: str):
+    user_keyring = get_user_keyring(username)
+
+    try:
+        api_keys_ring = user_keyring.search(
+            key_type=truenas_keyring.KeyType.KEYRING, description=PAM_API_KEY_NAME
+        )
+    except FileNotFoundError:
+        # API_KEYS keyring doesn't exist, create it
+        api_keys_ring = truenas_keyring.add_keyring(
+            description=PAM_API_KEY_NAME,
+            target_keyring=user_keyring.key.serial
+        )
+
+    return api_keys_ring
 
 
 def commit_user_entry(
@@ -64,12 +87,11 @@ def commit_user_entry(
     api_keys: list[UserApiKey],
     encrypt_fn: callable
 ) -> None:
-    """ Creates or replaces existing user keyring with new one containing only
-    the API keys specified by `api_keys`. The API keys are encrypted with
-    the specified encrypt_fn prior to insertion. """
-    user_ring = get_user_keyring(username)
-    # Clear out existing keyring. We'll replace with new entries
-    user_ring.clear()
+    """ Creates or replaces existing API keys in the user's API_KEYS keyring with new ones.
+    The API keys are encrypted with the specified encrypt_fn prior to insertion. """
+    api_keys_ring = get_api_keys_keyring(username)
+    # Clear out existing API_KEYS keyring. We'll replace with new entries
+    api_keys_ring.clear()
 
     for entry in api_keys:
         # Skip revoked entries
@@ -87,7 +109,7 @@ def commit_user_entry(
             key_type=truenas_keyring.KeyType.USER,
             description=str(entry.dbid),
             data=encrypt_fn(dumps(asdict(entry))).encode(),
-            target_keyring=user_ring.key.serial
+            target_keyring=api_keys_ring.key.serial
         )
 
         # Apply timeout if expiry is set (> 0)
@@ -97,24 +119,38 @@ def commit_user_entry(
 
 
 def clear_all_api_keys() -> None:
-    """ Clear out all user api keys in the truenas api key keyring """
-    get_api_keyring().clear()
+    """ Clear out all user api keys in the PAM_TRUENAS keyring """
+    pam_keyring = get_pam_keyring()
+
+    # Iterate through all user keyrings (unlink expired/revoked while iterating)
+    for item in pam_keyring.iter_keyring_contents(unlink_expired=True, unlink_revoked=True):
+        # Check if this is a keyring (user keyring)
+        if item.key.key_type == "keyring":
+            # For each user keyring, try to get and clear their API_KEYS sub-keyring
+            try:
+                api_keys_ring = item.search(
+                    key_type=truenas_keyring.KeyType.KEYRING, description=PAM_API_KEY_NAME
+                )
+                api_keys_ring.clear()
+            except FileNotFoundError:
+                # No API_KEYS keyring for this user, skip
+                pass
 
 
 def clear_user_keyring(username: str) -> None:
-    """ Clear all keys in user keyring """
-    user_ring = get_user_keyring(username)
-    # Clear out existing keyring. We'll replace with new entries
-    user_ring.clear()
+    """ Clear all API keys in user's API_KEYS keyring """
+    api_keys_ring = get_api_keys_keyring(username)
+    # Clear out existing API_KEYS keyring
+    api_keys_ring.clear()
 
 
 def dump_user_keyring(username: str, decrypt_fn: callable) -> list:
     """ dump user API key keyring contents. The API keys are
     decrypted with the specified decrypt_fn after read. """
-    user_ring = get_user_keyring(username)
+    api_keys_ring = get_api_keys_keyring(username)
     out = []
 
-    for entry in user_ring.list_keyring_contents():
+    for entry in api_keys_ring.list_keyring_contents(unlink_expired=True, unlink_revoked=True):
         data = entry.read_data()
         out.append(loads(decrypt_fn(data.decode())))
 

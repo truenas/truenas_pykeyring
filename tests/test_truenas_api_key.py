@@ -1,7 +1,20 @@
 import truenas_api_key.keyring as api_keyring
-from truenas_api_key.constants import UserApiKey, ApiKeyAlgorithm, KEYRING_NAME
-from middlewared.plugins.pwenc import encrypt, decrypt
+from truenas_api_key.constants import UserApiKey, ApiKeyAlgorithm, PAM_KEYRING_NAME, PAM_API_KEY_NAME
+import truenas_pypwenc
 import time
+
+# Create a pwenc context for encryption/decryption
+pwenc_ctx = truenas_pypwenc.get_context(create=True, secret_path="/tmp/test_pwenc_secret")
+
+def encrypt(data):
+    """Encrypt data - expects string, returns string (base64)."""
+    # Convert string to bytes, encrypt, and decode result to string
+    return pwenc_ctx.encrypt(data.encode()).decode()
+
+def decrypt(data):
+    """Decrypt data - expects string (base64), returns string."""
+    # Convert string to bytes, decrypt, and decode result to string
+    return pwenc_ctx.decrypt(data.encode()).decode()
 
 
 # Mock API key data using the UserApiKey dataclass
@@ -39,12 +52,12 @@ MOCK_USER_API_KEYS = [
 ]
 
 
-def test_get_api_keyring():
-    """Test getting or creating the main API keyring."""
-    keyring = api_keyring.get_api_keyring()
+def test_get_pam_keyring():
+    """Test getting or creating the main PAM keyring."""
+    keyring = api_keyring.get_pam_keyring()
 
     assert keyring is not None
-    assert keyring.key.description == KEYRING_NAME
+    assert keyring.key.description == PAM_KEYRING_NAME
     assert keyring.key.key_type == "keyring"
 
 
@@ -73,9 +86,9 @@ def test_commit_user_entry():
     # Commit the admin API keys
     api_keyring.commit_user_entry(username, admin_keys, encrypt)
 
-    # Verify they were stored
-    user_keyring = api_keyring.get_user_keyring(username)
-    stored_keys = user_keyring.list_keyring_contents()
+    # Verify they were stored in the API_KEYS sub-keyring
+    api_keys_keyring = api_keyring.get_api_keys_keyring(username)
+    stored_keys = api_keys_keyring.list_keyring_contents()
 
     # Should have 2 admin keys
     assert len(stored_keys) == 2
@@ -170,12 +183,17 @@ def test_clear_all_api_keys():
     # Clear all API keys
     api_keyring.clear_all_api_keys()
 
-    # Verify all user keyrings are gone/empty
-    # Note: This clears the entire API keyring, so user keyrings won't exist
-    # anymore
-    api_key_keyring = api_keyring.get_api_keyring()
-    contents = api_key_keyring.list_keyring_contents()
-    assert len(contents) == 0
+    # Verify API keys are gone but user keyrings still exist
+    # The function only clears API_KEYS sub-keyrings, not the user keyrings
+    admin_keys = api_keyring.dump_user_keyring("admin", decrypt)
+    testuser_keys = api_keyring.dump_user_keyring("testuser", decrypt)
+    assert len(admin_keys) == 0
+    assert len(testuser_keys) == 0
+
+    # Verify user keyrings still exist in PAM keyring
+    pam_keyring = api_keyring.get_pam_keyring()
+    contents = pam_keyring.list_keyring_contents()
+    assert len(contents) >= 2  # At least admin and testuser keyrings should exist
 
 
 def test_commit_entry_overwrites_existing():
@@ -213,6 +231,54 @@ def test_dataclass_serialization():
 
     # Should be identical
     assert recovered_key == original_key
+
+
+def test_api_keys_keyring_structure():
+    """Test that API keys are stored in the correct sub-keyring structure."""
+    username = "structtest"
+
+    # Get the user keyring
+    user_keyring = api_keyring.get_user_keyring(username)
+
+    # Get the API_KEYS sub-keyring
+    api_keys_keyring = api_keyring.get_api_keys_keyring(username)
+
+    # Verify it's a sub-keyring of the user keyring
+    assert api_keys_keyring.key.description == PAM_API_KEY_NAME
+    assert api_keys_keyring.key.key_type == "keyring"
+
+    # Create a test key
+    test_key = UserApiKey(
+        username=username,
+        dbid=9999,
+        algorithm=ApiKeyAlgorithm.SHA512,
+        iterations=4096,
+        expiry=int(time.time()) + 3600,
+        salt="test_salt_struct",
+        server_key="test_server_key_struct",
+        stored_key="test_stored_key_struct"
+    )
+
+    # Commit the key
+    api_keyring.commit_user_entry(username, [test_key], encrypt)
+
+    # Verify the structure: PAM_TRUENAS -> username -> API_KEYS -> actual keys
+    pam_keyring = api_keyring.get_pam_keyring()
+    pam_contents = pam_keyring.list_keyring_contents()
+
+    # Should have at least the user keyring
+    user_keyrings = [k for k in pam_contents if k.key.description == username]
+    assert len(user_keyrings) >= 1
+
+    # The user keyring should have the API_KEYS sub-keyring
+    user_keyring_contents = user_keyring.list_keyring_contents()
+    api_keys_subrings = [k for k in user_keyring_contents if k.key.description == PAM_API_KEY_NAME]
+    assert len(api_keys_subrings) >= 1
+
+    # The API_KEYS keyring should have the actual key
+    api_keys_contents = api_keys_keyring.list_keyring_contents()
+    assert len(api_keys_contents) == 1
+    assert api_keys_contents[0].description == str(test_key.dbid)
 
 
 def test_algorithm_enum():

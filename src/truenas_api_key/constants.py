@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 
-KEYRING_NAME = 'TRUENAS_API_KEYS'
+PAM_KEYRING_NAME = 'PAM_TRUENAS'
+PAM_API_KEY_NAME = 'API_KEYS'
 
 
 class ApiKeyAlgorithm(StrEnum):
