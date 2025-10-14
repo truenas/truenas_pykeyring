@@ -43,7 +43,7 @@ bool check_key_type(key_serial_t serial, const char *key_type_str, bool *match_o
 {
 	bool match;
 	char *desc;
-	char *type_found;
+	const char *type_found;
 
 	desc = get_key_description(serial);
 	if (desc == NULL)
@@ -118,7 +118,7 @@ bool get_keyring_serials(key_serial_t serial, key_serial_t **keys_out, size_t *c
 	}
 
 	*keys_out = (key_serial_t *)keys;
-	*cnt_out = bufsz / sizeof(key_serial_t);
+	*cnt_out = res / sizeof(key_serial_t);
 
 	return true;
 }
@@ -209,7 +209,7 @@ create_key_object_from_serial(key_serial_t key_serial, PyObject *module_obj)
 PyObject *
 get_keyring_error_from_module(PyObject *module_obj)
 {
-	tn_module_state_t *state = (tn_module_state_t *)PyModule_GetState(module_obj);
+	const tn_module_state_t *state = (tn_module_state_t *)PyModule_GetState(module_obj);
 	if (state == NULL) {
 		return PyExc_OSError;  /* Fallback to OSError if we can't get the state */
 	}

@@ -147,7 +147,7 @@ py_tn_keyring_iter_keyring_contents(py_tn_keyring_t *self, PyObject *args, PyObj
 		return NULL;
 	}
 
-	iter = PyObject_New(py_tn_keyring_iter_t, &TNKeyringIterType);
+	iter = (py_tn_keyring_iter_t *)PyObject_CallFunction((PyObject *)&TNKeyringIterType, NULL);
 	if (iter == NULL) {
 		return NULL;
 	}
@@ -176,7 +176,6 @@ py_tn_keyring_list_keyring_contents(py_tn_keyring_t *self, PyObject *args, PyObj
 	size_t i, key_cnt;
 	key_serial_t *keys;
 	PyObject *py_list, *py_key_obj;
-	long ret;
 	bool success;
 	static char *kwlist[] = {"unlink_expired", "unlink_revoked", NULL};
 	bool del_exp = false;
@@ -204,6 +203,7 @@ py_tn_keyring_list_keyring_contents(py_tn_keyring_t *self, PyObject *args, PyObj
 
 	for (i = 0; i < key_cnt; i++) {
 		/* Peek at key to see whether it's revoked */
+		long ret;
 		Py_BEGIN_ALLOW_THREADS
 		ret = keyctl_read(keys[i], NULL, 0);
 		Py_END_ALLOW_THREADS
