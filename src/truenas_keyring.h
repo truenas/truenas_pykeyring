@@ -9,6 +9,23 @@
 #define MODULE_NAME "truenas_keyring"
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
+#define __stringify(x) #x
+#define __stringify2(x) __stringify(x)
+#define __location__ __FILE__ ":" __stringify2(__LINE__)
+
+/*
+ * Macro to handle extreme error case in module. This should only be invoked
+ * if an error condition is detected that would make it dangerous to continue.
+ * This will call abort() and generate a corefile.
+ */
+#define __PYKR_ASSERT_IMPL(test, message, location) do {\
+	if (!test) {\
+		Py_FatalError(message " [" location "]");\
+	}\
+} while (0);
+#define PYKR_ASSERT(test, message)\
+	__PYKR_ASSERT_IMPL(test, message, __location__);
+
 typedef struct {
 	PyObject_HEAD
 	key_serial_t c_serial;

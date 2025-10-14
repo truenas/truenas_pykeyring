@@ -5,17 +5,26 @@ py_tn_keyring_iter_dealloc(py_tn_keyring_iter_t *self)
 {
 	Py_CLEAR(self->keyring);
 	PyMem_RawFree(self->keys);
+	self->keys = NULL;
 	Py_TYPE(self)->tp_free((PyObject *) self);
+}
+
+static PyObject *
+py_tn_keyring_iter_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
+{
+	py_tn_keyring_iter_t *self = NULL;
+	self = (py_tn_keyring_iter_t *)type->tp_alloc(type, 0);
+	return (PyObject *)self;
 }
 
 static PyObject *
 py_tn_keyring_iter_iternext(py_tn_keyring_iter_t *self)
 {
-	PyObject *py_key_obj;
-	long ret;
+	PyObject *py_key_obj = NULL;
 
 	/* Skip expired and revoked keys based on flags */
 	while (self->current_index < self->key_count) {
+		long ret;
 		key_serial_t current_key = self->keys[self->current_index];
 		self->current_index++;
 
@@ -74,6 +83,7 @@ PyTypeObject TNKeyringIterType = {
 	.tp_basicsize = sizeof(py_tn_keyring_iter_t),
 	.tp_flags = Py_TPFLAGS_DEFAULT,
 	.tp_dealloc = (destructor) py_tn_keyring_iter_dealloc,
+	.tp_new = py_tn_keyring_iter_new,
 	.tp_iter = PyObject_SelfIter,
 	.tp_iternext = (iternextfunc) py_tn_keyring_iter_iternext,
 };
