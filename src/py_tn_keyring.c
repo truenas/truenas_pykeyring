@@ -138,7 +138,7 @@ py_tn_keyring_iter_keyring_contents(py_tn_keyring_t *self, PyObject *args, PyObj
 {
 	py_tn_keyring_iter_t *iter;
 	bool success;
-	static char *kwlist[] = {"unlink_expired", "unlink_revoked", NULL};
+	char * const kwlist[] = {"unlink_expired", "unlink_revoked", NULL};
 	bool del_exp = false;
 	bool del_rev = false;
 
@@ -177,7 +177,7 @@ py_tn_keyring_list_keyring_contents(py_tn_keyring_t *self, PyObject *args, PyObj
 	key_serial_t *keys;
 	PyObject *py_list, *py_key_obj;
 	bool success;
-	static char *kwlist[] = {"unlink_expired", "unlink_revoked", NULL};
+	char * const kwlist[] = {"unlink_expired", "unlink_revoked", NULL};
 	bool del_exp = false;
 	bool del_rev = false;
 
@@ -282,7 +282,7 @@ PyDoc_STRVAR(py_tn_keyring_search__doc__,
 static PyObject *
 py_tn_keyring_search(py_tn_keyring_t *self, PyObject *args, PyObject *kwargs)
 {
-	static char *kwlist[] = {"key_type", "description", NULL};
+	char * const kwlist[] = {"key_type", "description", NULL};
 	const char *key_type_str;
 	const char *description_str;
 	key_serial_t found_serial;

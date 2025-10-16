@@ -34,7 +34,7 @@ PyDoc_STRVAR(tn_request_key__doc__,
 static PyObject *
 tn_request_key(PyObject *module_obj, PyObject *args, PyObject *kwargs)
 {
-	static char *kwlist[] = {"key_type", "description", NULL};
+	char * const kwlist[] = {"key_type", "description", NULL};
 	PyObject *key_type_obj = NULL;
 	const char *key_type_str;
 	const char *description_str;
@@ -115,7 +115,7 @@ PyDoc_STRVAR(tn_revoke_key__doc__,
 static PyObject *
 tn_revoke_key(PyObject *module_obj, PyObject *args, PyObject *kwargs)
 {
-	static char *kwlist[] = {"serial", NULL};
+	char * const kwlist[] = {"serial", NULL};
 	key_serial_t serial;
 	long result;
 
@@ -161,7 +161,7 @@ PyDoc_STRVAR(tn_invalidate_key__doc__,
 static PyObject *
 tn_invalidate_key(PyObject *module_obj, PyObject *args, PyObject *kwargs)
 {
-	static char *kwlist[] = {"serial", NULL};
+	char * const kwlist[] = {"serial", NULL};
 	key_serial_t serial;
 	long result;
 
@@ -212,7 +212,7 @@ PyDoc_STRVAR(tn_get_persistent_keyring__doc__,
 static PyObject *
 tn_get_persistent_keyring(PyObject *module_obj, PyObject *args, PyObject *kwargs)
 {
-	static char *kwlist[] = {"uid", NULL};
+	char * const kwlist[] = {"uid", NULL};
 	int uid = -1;
 	key_serial_t serial;
 	PyObject *keyring_instance;
@@ -272,7 +272,7 @@ PyDoc_STRVAR(tn_add_key__doc__,
 static PyObject *
 tn_add_key(PyObject *module_obj, PyObject *args, PyObject *kwargs)
 {
-	static char *kwlist[] = {"key_type", "description", "data", "target_keyring", NULL};
+	char * const kwlist[] = {"key_type", "description", "data", "target_keyring", NULL};
 	const char *key_type_str;
 	const char *description_str;
 	const char *data_buf;
@@ -336,7 +336,7 @@ PyDoc_STRVAR(tn_add_keyring__doc__,
 static PyObject *
 tn_add_keyring(PyObject *module_obj, PyObject *args, PyObject *kwargs)
 {
-	static char *kwlist[] = {"description", "target_keyring", NULL};
+	char * const kwlist[] = {"description", "target_keyring", NULL};
 	const char *description_str;
 	int target_keyring;
 	key_serial_t serial;
