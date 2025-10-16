@@ -43,6 +43,7 @@ bool check_key_type(key_serial_t serial, const char *key_type_str, bool *match_o
 {
 	bool match;
 	char *desc;
+	char *saveptr;
 	const char *type_found;
 
 	desc = get_key_description(serial);
@@ -50,7 +51,7 @@ bool check_key_type(key_serial_t serial, const char *key_type_str, bool *match_o
 		return false;
 
 
-	type_found = strtok(desc, ";");
+	type_found = strtok_r(desc, ";", &saveptr);
 	if (type_found == NULL) {
 		PyMem_RawFree(desc);
 		errno = ENOENT;

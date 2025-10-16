@@ -15,6 +15,7 @@ py_tnkey_parse_description(py_tnkey_t *self)
 {
 	char *pdesc;
 	char *token;
+	char *saveptr;
 	char *endptr;
 	int field = 0;
 	unsigned long val;
@@ -34,7 +35,7 @@ py_tnkey_parse_description(py_tnkey_t *self)
 	}
 	self->c_describe = pdesc + 1;
 
-	token = strtok(self->c_desc_buf, TNKEY_SEPARATOR);
+	token = strtok_r(self->c_desc_buf, TNKEY_SEPARATOR, &saveptr);
 	while (token != NULL && field <= TNKEYDESC_KEY_PERM) {
 		switch (field) {
 		case TNKEYDESC_KEY_TYPE_NAME:
@@ -66,7 +67,7 @@ py_tnkey_parse_description(py_tnkey_t *self)
 			break;
 		}
 		field++;
-		token = strtok(NULL, TNKEY_SEPARATOR);
+		token = strtok_r(NULL, TNKEY_SEPARATOR, &saveptr);
 	}
 
 	if (field < TNKEYDESC_KEY_PERM) {
@@ -208,7 +209,7 @@ py_tnkey_set_timeout(py_tnkey_t *self, PyObject *args, PyObject *kwargs)
 {
 	unsigned int timeout;
 	long res;
-	static char *kwlist[] = {"timeout", NULL};
+	char * const kwlist[] = {"timeout", NULL};
 
 	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "I", kwlist, &timeout)) {
 		return NULL;
