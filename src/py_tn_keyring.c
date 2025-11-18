@@ -279,6 +279,49 @@ PyDoc_STRVAR(py_tn_keyring_search__doc__,
 "    Other system call errors (see errno for details).\n\n"
 );
 
+PyDoc_STRVAR(py_tn_keyring_unlink__doc__,
+"unlink_key(serial) -> None\n"
+"-------------------------\n\n"
+"Unlink a key from the keyring by its serial number.\n"
+"See man (3) keyctl_unlink for more information.\n\n"
+""
+"Parameters\n"
+"----------\n"
+"serial: int, required\n"
+"    The serial number of the key to unlink from this keyring.\n\n"
+""
+"Returns\n"
+"-------\n"
+"None\n\n"
+""
+"Raises\n"
+"------\n"
+"truenas_keyring.KeyringError:\n"
+"    System call failed (see errno for details).\n\n"
+);
+
+static PyObject *
+py_tn_keyring_unlink(py_tn_keyring_t *self, PyObject *args)
+{
+	long result;
+	key_serial_t key_serial;
+
+	if (!PyArg_ParseTuple(args, "i:unlink_key", &key_serial)) {
+		return NULL;
+	}
+
+	Py_BEGIN_ALLOW_THREADS
+	result = keyctl_unlink(key_serial, self->py_key->c_serial);
+	Py_END_ALLOW_THREADS
+
+	if (result == -1) {
+		PyErr_SetFromErrno(get_keyring_error_from_module(self->py_key->module_obj));
+		return NULL;
+	}
+
+	Py_RETURN_NONE;
+}
+
 static PyObject *
 py_tn_keyring_search(py_tn_keyring_t *self, PyObject *args, PyObject *kwargs)
 {
@@ -354,6 +397,12 @@ static PyMethodDef py_tn_keyring_methods[] = {
 		.ml_meth = (PyCFunction)py_tn_keyring_search,
 		.ml_flags = METH_VARARGS | METH_KEYWORDS,
 		.ml_doc = py_tn_keyring_search__doc__
+	},
+	{
+		.ml_name = "unlink_key",
+		.ml_meth = (PyCFunction)py_tn_keyring_unlink,
+		.ml_flags = METH_VARARGS,
+		.ml_doc = py_tn_keyring_unlink__doc__
 	},
 	{NULL}
 };
