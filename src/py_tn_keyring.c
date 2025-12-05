@@ -195,7 +195,7 @@ py_tn_keyring_list_keyring_contents(py_tn_keyring_t *self, PyObject *args, PyObj
 		return NULL;
 	}
 
-	py_list = PyList_New(key_cnt);
+	py_list = PyList_New(0);
 	if (py_list == NULL) {
 		PyMem_RawFree(keys);
 		return NULL;
@@ -246,7 +246,13 @@ py_tn_keyring_list_keyring_contents(py_tn_keyring_t *self, PyObject *args, PyObj
 			PyMem_RawFree(keys);
 			return NULL;
 		}
-		PyList_SetItem(py_list, i, py_key_obj);
+		if (PyList_Append(py_list, py_key_obj) == -1) {
+			Py_DECREF(py_key_obj);
+			Py_DECREF(py_list);
+			PyMem_RawFree(keys);
+			return NULL;
+		}
+		Py_DECREF(py_key_obj);
 	}
 
 	PyMem_RawFree(keys);
