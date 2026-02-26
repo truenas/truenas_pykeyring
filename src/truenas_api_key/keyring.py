@@ -1,7 +1,13 @@
-import truenas_keyring
+from __future__ import annotations
+
+from collections.abc import Callable
 from dataclasses import asdict
-from json import dumps, loads
 from datetime import datetime, timezone
+from json import dumps, loads
+from typing import Any
+
+import truenas_keyring
+
 from .constants import PAM_KEYRING_NAME, PAM_API_KEY_NAME, UserApiKey
 
 
@@ -32,7 +38,7 @@ have a shared persistent keyring.
 """
 
 
-def get_pam_keyring():
+def get_pam_keyring() -> truenas_keyring.TNKeyring:
     persistent_keyring = truenas_keyring.get_persistent_keyring()
     try:
         pam_keyring = persistent_keyring.search(
@@ -48,7 +54,7 @@ def get_pam_keyring():
     return pam_keyring
 
 
-def get_user_keyring(username: str):
+def get_user_keyring(username: str) -> truenas_keyring.TNKeyring:
     pam_keyring = get_pam_keyring()
 
     try:
@@ -65,7 +71,7 @@ def get_user_keyring(username: str):
     return user_ring
 
 
-def get_api_keys_keyring(username: str):
+def get_api_keys_keyring(username: str) -> truenas_keyring.TNKeyring:
     user_keyring = get_user_keyring(username)
 
     try:
@@ -85,7 +91,7 @@ def get_api_keys_keyring(username: str):
 def commit_user_entry(
     username: str,
     api_keys: list[UserApiKey],
-    encrypt_fn: callable
+    encrypt_fn: Callable[[str], str],
 ) -> None:
     """ Creates or replaces existing API keys in the user's API_KEYS keyring with new ones.
     The API keys are encrypted with the specified encrypt_fn prior to insertion. """
@@ -125,10 +131,10 @@ def clear_all_api_keys() -> None:
     # Iterate through all user keyrings (unlink expired/revoked while iterating)
     for item in pam_keyring.iter_keyring_contents(unlink_expired=True, unlink_revoked=True):
         # Check if this is a keyring (user keyring)
-        if item.key.key_type == "keyring":
+        if item.key.key_type == "keyring":  # type: ignore[union-attr]
             # For each user keyring, try to get and clear their API_KEYS sub-keyring
             try:
-                api_keys_ring = item.search(
+                api_keys_ring = item.search(  # type: ignore[union-attr]
                     key_type=truenas_keyring.KeyType.KEYRING, description=PAM_API_KEY_NAME
                 )
                 api_keys_ring.clear()
@@ -144,14 +150,14 @@ def clear_user_keyring(username: str) -> None:
     api_keys_ring.clear()
 
 
-def dump_user_keyring(username: str, decrypt_fn: callable) -> list:
+def dump_user_keyring(username: str, decrypt_fn: Callable[[str], str]) -> list[dict[str, Any]]:
     """ dump user API key keyring contents. The API keys are
     decrypted with the specified decrypt_fn after read. """
     api_keys_ring = get_api_keys_keyring(username)
     out = []
 
     for entry in api_keys_ring.list_keyring_contents(unlink_expired=True, unlink_revoked=True):
-        data = entry.read_data()
+        data = entry.read_data()  # type: ignore[union-attr]
         out.append(loads(decrypt_fn(data.decode())))
 
     return out

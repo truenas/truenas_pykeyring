@@ -17,5 +17,6 @@ truenas_keyring_ext = Extension(
 setup(
     packages=['truenas_api_key'],
     package_dir={'truenas_api_key': 'src/truenas_api_key'},
+    package_data={'truenas_api_key': ['py.typed']},
     ext_modules=[truenas_keyring_ext]
 )
