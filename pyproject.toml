@@ -25,3 +25,6 @@ classifiers = [
 [tool.setuptools]
 packages = ["truenas_api_key"]
 package-dir = {"truenas_api_key" = "src/truenas_api_key"}
+
+[tool.setuptools.package-data]
+truenas_api_key = ["py.typed"]
